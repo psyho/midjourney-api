@@ -1,0 +1,79 @@
+#!/usr/bin/env ruby
+
+require "pry"
+require "dotenv/load"
+require "playwright"
+require "securerandom"
+require "open-uri"
+
+discord_username = ENV['DISCORD_USERNAME']
+discord_password = ENV['DISCORD_PASSWORD']
+discord_nick = ENV['DISCORD_NICK']
+channel_url = ENV['CHANNEL_URL']
+message_placeholder = ENV['MESSAGE_PLACEHOLDER']
+open_image_label = ENV['OPEN_IMAGE_LABEL']
+
+if ARGV.empty?
+  puts "Usage: imagine <prompt>"
+  exit 1
+end
+
+prompt = ARGV.join(" ")
+
+Playwright.create(playwright_cli_executable_path: './node_modules/.bin/playwright') do |playwright|
+  playwright.chromium.launch(headless: false) do |browser|
+    page = browser.new_page
+    page.goto('https://discord.com/login')
+
+    page.locator('input[name="email"]').click
+    page.keyboard.type(discord_username)
+
+    page.locator('input[name="password"]').click
+    page.keyboard.type(discord_password)
+
+    page.expect_navigation {
+      page.keyboard.press("Enter")
+    }
+
+    page.goto(channel_url)
+
+    id = SecureRandom.hex
+
+    page.locator("div[role=\"textbox\"]:near(div:has-text(\"#{message_placeholder}\"))").click
+    page.keyboard.type("/imagine")
+    page.get_by_text("Create images with Midjourney").wait_for
+    page.keyboard.press("Enter")
+
+    full_prompt = "#{id} ::0 #{prompt}"
+    page.keyboard.type(full_prompt)
+    page.keyboard.press("Enter")
+
+    completed_text = "#{full_prompt} - @#{discord_nick} (fast)"
+    page.get_by_text(completed_text).wait_for(timeout: 120_000)
+
+    (1..4).each do |image_idx|
+      page.locator("button:below(:text('#{completed_text}'))").filter(hasText: "U#{image_idx}").first.click
+    end
+
+    (1..4).each do |image_idx|
+      upscaled_image_text = "#{full_prompt} - Image ##{image_idx} @#{discord_nick}"
+      page.get_by_text(upscaled_image_text).wait_for(timeout: 120_000)
+
+      page.locator("a:below(:text('#{upscaled_image_text}'))").first.click
+
+      image_url = page.locator("a:text('#{open_image_label}')").first.get_attribute('href')
+
+      page.keyboard.press("Escape")
+
+      filename = image_url.split('/').last.split('?').first
+
+      URI.open(image_url) do |image|
+        File.open(filename, 'wb') do |file|
+          IO.copy_stream(image, file)
+        end
+      end
+
+      puts "Image downloaded to #{filename}"
+    end
+  end
+end
