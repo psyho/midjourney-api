@@ -6,7 +6,7 @@ require "playwright"
 require "securerandom"
 require "open-uri"
 
-discord_username = ENV['DISCORD_USERNAME']
+discord_email = ENV['DISCORD_EMAIL']
 discord_password = ENV['DISCORD_PASSWORD']
 discord_nick = ENV['DISCORD_NICK']
 channel_url = ENV['CHANNEL_URL']
@@ -26,7 +26,7 @@ Playwright.create(playwright_cli_executable_path: './node_modules/.bin/playwrigh
     page.goto('https://discord.com/login')
 
     page.locator('input[name="email"]').click
-    page.keyboard.type(discord_username)
+    page.keyboard.type(discord_email)
 
     page.locator('input[name="password"]').click
     page.keyboard.type(discord_password)
