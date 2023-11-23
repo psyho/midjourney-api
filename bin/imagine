@@ -45,6 +45,7 @@ Playwright.create(playwright_cli_executable_path: './node_modules/.bin/playwrigh
     page.keyboard.press("Enter")
 
     full_prompt = "#{id} ::0 #{prompt}"
+    full_prompt = full_prompt.gsub(/\s+::/, "::")
     page.keyboard.type(full_prompt)
     page.keyboard.press("Enter")
 
